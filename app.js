@@ -19,17 +19,16 @@ const getTests = async () => {
   }
 
 bot.on("ready", () => {
-  console.log("COVID bot is ready");
+  console.log("COVID19 up and running!");
 });
 
 bot.on("message", async (msg) => {
   if (!msg.content.startsWith(prefix)) {
-    console.log("no prefix");
     return;
   }
   const args = msg.content.slice(prefix.length).trim().split(" ");
   const command = args.shift().toLowerCase();
-  console.log("command: ", command);
+  console.log("Got command: ", command);
 
   if (command === "activate") {
     const covidData = await getTests();
@@ -40,12 +39,15 @@ bot.on("message", async (msg) => {
 	.setTimestamp()
 	.setFooter('COVID19 Bot');
     await covidData.forEach(day => {
+        let date = new Date(`${day.month}.${day.day}.${day.year}`);
+        let weekday = date.toLocaleDateString("sl-SI", { weekday: 'long' });
+        weekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+        date = date.toLocaleDateString("si-SI");
         let value = "Opravljeni testi: " + day.total.performed.today + "\n" +
-                    "Pozitivni: " + day.total.positive.today + "%\n" +
-                    "Delež pozitivnih: " + (((day.total.positive.today / day.total.performed.today) * 100).toFixed(2));
-        msgEmbed.addField(`${day.day}.${day.month}.${day.year}`, value, true);
+                    "Pozitivni: " + day.total.positive.today + "\n" +
+                    "Delež pozitivnih: " + (((day.total.positive.today / day.total.performed.today) * 100).toFixed(2)) + "%";
+        msgEmbed.addField(weekday + " " + date, value, true);
     });
-    console.log(msgEmbed);
     bot.channels.cache.get(msg.channel.id).send(msgEmbed);
   }
 });
