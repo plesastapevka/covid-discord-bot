@@ -42,11 +42,11 @@ bot.on("message", async (msg) => {
         let date = new Date(`${day.month}.${day.day}.${day.year}`);
         let weekday = date.toLocaleDateString("sl-SI", { weekday: 'long' });
         weekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
-        date = date.toLocaleDateString("si-SI");
+        date = date.toLocaleDateString("sl-SI");
         let value = "Opravljeni testi: " + day.total.performed.today + "\n" +
                     "Pozitivni: " + day.total.positive.today + "\n" +
                     "Delež pozitivnih: " + (((day.total.positive.today / day.total.performed.today) * 100).toFixed(2)) + "%";
-        msgEmbed.addField(weekday + " " + date, value, true);
+        msgEmbed.addField(weekday + ", " + date, value, true);
     });
     bot.channels.cache.get(msg.channel.id).send(msgEmbed);
   }
