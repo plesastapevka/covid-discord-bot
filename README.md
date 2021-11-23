@@ -48,7 +48,7 @@ On where to find these values, please refer to [Discord developer portal](https:
 <br>
 
 ## Usage
-To execute a command, use prefix `!` and one of the below commandsin a channel where COVIDek is added.
+To execute a command, use prefix `!` and one of the below commands in a channel where COVIDek is added.
 
 ### List of available commands:
 
