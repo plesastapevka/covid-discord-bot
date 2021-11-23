@@ -8,31 +8,24 @@ All data is fetched via COVID-19 Sledilnik.
 
 ---
 
-## Add COVIDek to Server
-You can add COVIDek to your server [here](https://discord.com/api/oauth2/authorize?client_id=910486812349308978&permissions=274877996032&scope=bot).
+## Add COVIDek to your Discord server
+You can add COVIDek to your Discord server [here](https://discord.com/api/oauth2/authorize?client_id=910486812349308978&permissions=274877996032&scope=bot).
 
-<br>
 
 ## Run COVIDek with Node.js
 ```
 node app.js
 ```
 
-<br>
-
 ## Run COVIDek in Docker
 In project root, first build the image:
-
 ```
 docker build -t covid-discord-bot .
 ```
-
 Then run the built image:
-
 ```
 docker run -d --restart=always --env-file /path/to/.env --name covid-discord-bot covid-discord-bot
 ```
-<br>
 
 ## Environment file
 
@@ -44,8 +37,6 @@ DISC_AUTH_TOKEN=<your discord authorization token>
 CLIENT_ID=<your client id>
 ```
 On where to find these values, please refer to [Discord developer portal](https://discord.com/developers/docs/topics/oauth2).
-
-<br>
 
 ## Usage
 To execute a command, use prefix `!` and one of the below commands in a channel where COVIDek is added.
