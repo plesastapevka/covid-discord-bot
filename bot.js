@@ -1,5 +1,5 @@
 const { Api } = require("./api");
-const { Client, MessageEmbed, ReactionUserManager } = require("discord.js");
+const { Client, MessageEmbed } = require("discord.js");
 const DAY = 24 * 60 * 60 * 1000;
 const MINUTE = 1000 * 60;
 
