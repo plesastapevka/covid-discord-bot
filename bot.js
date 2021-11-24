@@ -29,7 +29,8 @@ class Bot {
         this.activate(msg.channel.id);
       } else if (command === "deactivate") {
         this.deactivate(msg.channel.id);
-      } else {
+      } else if (command === "update") {
+        this.update(msg.channel.id);
       }
     });
   }
@@ -50,7 +51,7 @@ class Bot {
       lastUpdate: 0,
       interval: setInterval(() => {
         this.dailyUpdate(channelId);
-      }, 15 * MINUTE),
+      }, 1000),
     };
     this.intervals.push(interval);
     console.log("Current intervals: " + this.intervals.length);
@@ -61,6 +62,10 @@ class Bot {
     const interval = this.intervals.find(
       (interval) => interval.channelId === channelId
     );
+    if (!interval) {
+      console.log("Does not exist");
+      return;
+    }
     clearInterval(interval.interval);
     this.intervals = this.intervals.filter(
       (interval) => interval.channelId !== channelId
@@ -68,9 +73,54 @@ class Bot {
     console.log("Current intervals: " + this.intervals.length);
   };
 
+  // Command: update
+  update = async (channelId) => {
+    this.dailyUpdate(channelId);
+  };
+
   // Send message to channel
   sendMessage = (msg, channelId) => {
     this.client.channels.cache.get(channelId).send(msg);
+  };
+
+  // Send data for yesterday
+  update = async (channelId) => {
+    const yesterday = new Date(
+      new Date().getTime() - 1 * DAY
+    ).toLocaleDateString("en-US");
+    const covidData = await Api.getPositives(yesterday, yesterday);
+    if (covidData.length === 0) {
+      let msgEmbed = this.constructEmbed(
+        "Ni na voljo",
+        "Podatki za včerajšnji dan še niso na voljo"
+      );
+      this.sendMessage(msgEmbed, channelId);
+      return;
+    }
+    const element = covidData.slice(-1)[0];
+    let msgEmbed = this.constructEmbed(
+      "Rezultati COVID bolezni včeraj",
+      "Število opravljenih testov in pozitivnih"
+    );
+    let date = new Date(`${element.month}.${element.day}.${element.year}`);
+    let weekday = date.toLocaleDateString("sl-SI", { weekday: "long" });
+    weekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+    date = date.toLocaleDateString("sl-SI");
+    let value =
+      "Opravljeni testi: " +
+      element.total.performed.today +
+      "\n" +
+      "Pozitivni: " +
+      element.total.positive.today +
+      "\n" +
+      "Delež pozitivnih: " +
+      (
+        (element.total.positive.today / element.total.performed.today) *
+        100
+      ).toFixed(2) +
+      "%";
+    msgEmbed.addField(weekday + ", " + date, value, true);
+    this.sendMessage(msgEmbed, channelId);
   };
 
   // Daily update when yesterday's data is available
@@ -83,21 +133,13 @@ class Bot {
     );
     const today = new Date().toLocaleDateString("en-US");
     const covidData = await Api.getPositives(from, today);
-    const element = covidData.slice(-1)[0];
-    const todayFromData = new Date(
-      `${element.year}-${element.month}-${element.day}`
-    ).toLocaleDateString("en-US");
-    console.log(todayFromData);
     if (covidData.length !== 7 || interval.lastUpdate === today) {
-      console.log("Skipping update");
       return;
     }
-    let msgEmbed = new MessageEmbed()
-      .setColor("#0099ff")
-      .setTitle("Rezultati COVID bolezni")
-      .setDescription("Število okužb za določene dni")
-      .setTimestamp()
-      .setFooter("COVIDek");
+    let msgEmbed = this.constructEmbed(
+      "Rezultati COVID bolezni preteklih 7 dni",
+      "Število okužb za določene dni"
+    );
     await covidData.forEach((day) => {
       let date = new Date(`${day.month}.${day.day}.${day.year}`);
       let weekday = date.toLocaleDateString("sl-SI", { weekday: "long" });
@@ -119,6 +161,18 @@ class Bot {
     });
     this.sendMessage(msgEmbed, channelId);
     interval.lastUpdate = today;
+    console.log(`Last update for channel ${channelId}: ${today}`);
+  };
+
+  // Construct Message Embed for updates
+  constructEmbed = (title, desc) => {
+    let msgEmbed = new MessageEmbed()
+      .setColor("#0099ff")
+      .setTitle(title)
+      .setDescription(desc)
+      .setTimestamp()
+      .setFooter("COVIDek");
+    return msgEmbed;
   };
 }
 
