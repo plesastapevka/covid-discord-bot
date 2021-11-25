@@ -51,7 +51,7 @@ class Bot {
       lastUpdate: 0,
       interval: setInterval(() => {
         this.dailyUpdate(channelId);
-      }, 1000),
+      }, 15 * MINUTE),
     };
     this.intervals.push(interval);
     console.log("Current intervals: " + this.intervals.length);
