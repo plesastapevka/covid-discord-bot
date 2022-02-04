@@ -14,7 +14,7 @@ class Bot {
     // EVENT LISTENERS
     // Event on ready
     this.client.on("ready", () => {
-      console.log("COVIDek up and running!");
+      console.info("COVIDek up and running!");
     });
 
     // Event on message
@@ -31,6 +31,8 @@ class Bot {
         this.deactivate(msg.channel.id);
       } else if (command === "update") {
         this.update(msg.channel.id);
+      } else if (command === "help") {
+        this.help(msg.channel.id);
       }
     });
   }
@@ -44,6 +46,11 @@ class Bot {
   // Command: activate
   activate = async (channelId) => {
     if (this.intervals.some((interval) => interval.channelId === channelId)) {
+      let msgEmbed = this.constructEmbed(
+        "Obvestila že aktivirana",
+        "Ta kanal že ima aktivna obvestila."
+      );
+      this.sendMessage(msgEmbed, channelId);
       return;
     }
     const interval = {
@@ -54,7 +61,12 @@ class Bot {
       }, 15 * MINUTE),
     };
     this.intervals.push(interval);
-    console.log("Current intervals: " + this.intervals.length);
+    console.info("Current intervals: " + this.intervals.length);
+    let msgEmbed = this.constructEmbed(
+      "Obvestila aktivirana",
+      "Ta kanal je aktiviran za prejemanje dnevnih obvestil."
+    );
+    this.sendMessage(msgEmbed, channelId);
   };
 
   // Command: deactivate
@@ -63,24 +75,23 @@ class Bot {
       (interval) => interval.channelId === channelId
     );
     if (!interval) {
-      console.log("Does not exist");
+      let msgEmbed = this.constructEmbed(
+        "Obvestila niso aktivirana",
+        "Ta kanal nima aktivnih obvestil."
+      );
+      this.sendMessage(msgEmbed, channelId);
       return;
     }
     clearInterval(interval.interval);
     this.intervals = this.intervals.filter(
       (interval) => interval.channelId !== channelId
     );
-    console.log("Current intervals: " + this.intervals.length);
-  };
-
-  // Command: update
-  update = async (channelId) => {
-    this.dailyUpdate(channelId);
-  };
-
-  // Send message to channel
-  sendMessage = (msg, channelId) => {
-    this.client.channels.cache.get(channelId).send(msg);
+    let msgEmbed = this.constructEmbed(
+      "Obvestila deaktivirana",
+      "Ta kanal ne bo več prejemal dnevnih obvestil."
+    );
+    this.sendMessage(msgEmbed, channelId);
+    console.info("Current intervals: " + this.intervals.length);
   };
 
   // Send data for yesterday
@@ -89,6 +100,9 @@ class Bot {
       new Date().getTime() - 1 * DAY
     ).toLocaleDateString("en-US");
     const covidData = await Api.getPositives(yesterday, yesterday);
+    if (covidData === null) {
+      return;
+    }
     if (covidData.length === 0) {
       let msgEmbed = this.constructEmbed(
         "Ni na voljo",
@@ -100,27 +114,30 @@ class Bot {
     const element = covidData.slice(-1)[0];
     let msgEmbed = this.constructEmbed(
       "Rezultati COVID bolezni včeraj",
-      "Število opravljenih testov in pozitivnih"
+      "Število opravljenih in pozitivnih testov"
     );
     let date = new Date(`${element.month}.${element.day}.${element.year}`);
     let weekday = date.toLocaleDateString("sl-SI", { weekday: "long" });
-    weekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+    weekday = weekday.toUpperCase();
     date = date.toLocaleDateString("sl-SI");
-    let value =
-      "Opravljeni testi: " +
-      element.total.performed.today +
-      "\n" +
-      "Pozitivni: " +
-      element.total.positive.today +
-      "\n" +
-      "Delež pozitivnih: " +
-      (
-        (element.total.positive.today / element.total.performed.today) *
-        100
-      ).toFixed(2) +
-      "%";
+    let value = this.constructDailyValue(element.data);
     msgEmbed.addField(weekday + ", " + date, value, true);
     this.sendMessage(msgEmbed, channelId);
+  };
+
+  // Send data for yesterday
+  help = async (channelId) => {
+    let msgEmbed = this.constructEmbed("Pomoč", "");
+    msgEmbed.addField("!activate", "Aktivira dnevna obvestila za trenutni kanal", true);
+    msgEmbed.addField("!deactivate", "Ustavi dnevna obvestila za trenutni kanal", true);
+    msgEmbed.addField("!update", "Podatki za prejšnji dan", true);
+    msgEmbed.addField("!help", "To sporočilo", true);
+    this.sendMessage(msgEmbed, channelId);
+  };
+
+  // Send message to channel
+  sendMessage = (msg, channelId) => {
+    this.client.channels.cache.get(channelId).send(msg);
   };
 
   // Daily update when yesterday's data is available
@@ -133,6 +150,9 @@ class Bot {
     );
     const today = new Date().toLocaleDateString("en-US");
     const covidData = await Api.getPositives(from, today);
+    if (covidData === null) {
+      return;
+    }
     if (covidData.length !== 7 || interval.lastUpdate === today) {
       return;
     }
@@ -145,23 +165,12 @@ class Bot {
       let weekday = date.toLocaleDateString("sl-SI", { weekday: "long" });
       weekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
       date = date.toLocaleDateString("sl-SI");
-      let value =
-        "Opravljeni testi: " +
-        day.total.performed.today +
-        "\n" +
-        "Pozitivni: " +
-        day.total.positive.today +
-        "\n" +
-        "Delež pozitivnih: " +
-        ((day.total.positive.today / day.total.performed.today) * 100).toFixed(
-          2
-        ) +
-        "%";
+      let value = this.constructDailyValue(day.data);
       msgEmbed.addField(weekday + ", " + date, value, true);
     });
     this.sendMessage(msgEmbed, channelId);
     interval.lastUpdate = today;
-    console.log(`Last update for channel ${channelId}: ${today}`);
+    console.info(`Last update for channel ${channelId}: ${today}`);
   };
 
   // Construct Message Embed for updates
@@ -173,6 +182,52 @@ class Bot {
       .setTimestamp()
       .setFooter("COVIDek");
     return msgEmbed;
+  };
+
+  // Construct value field for message embed
+  constructDailyValue = (element) => {
+    return (
+      "PCR\n" +
+      "Opravljeni: " +
+      element.regular.performed.today +
+      "\n" +
+      "Pozitivni: " +
+      element.regular.positive.today +
+      "\n" +
+      "Delež pozitivnih: " +
+      (
+        (element.regular.positive.today / element.regular.performed.today) *
+        100
+      ).toFixed(2) +
+      "%\n\n" +
+      "HAGT\n" +
+      "Opravljeni: " +
+      element.hagt.performed.today +
+      "\n" +
+      "Pozitivni: " +
+      element.hagt.positive.today +
+      "\n" +
+      "Delež pozitivnih: " +
+      (
+        (element.hagt.positive.today / element.hagt.performed.today) *
+        100
+      ).toFixed(2) +
+      "%\n\n" +
+      "SKUPAJ\n" +
+      "Opravljeni: " +
+      (element.regular.performed.today + element.hagt.performed.today) +
+      "\n" +
+      "Pozitivni: " +
+      (element.regular.positive.today + element.hagt.positive.today) +
+      "\n" +
+      "Delež pozitivnih: " +
+      (
+        ((element.hagt.positive.today + element.regular.positive.today) /
+          (element.hagt.performed.today + element.regular.performed.today)) *
+        100
+      ).toFixed(2) +
+      "%"
+    );
   };
 }
 
