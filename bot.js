@@ -58,7 +58,7 @@ class Bot {
       lastUpdate: 0,
       interval: setInterval(() => {
         this.dailyUpdate(channelId);
-      }, 15 * MINUTE),
+        }, 15 * MINUTE),
     };
     this.intervals.push(interval);
     console.info("Current intervals: " + this.intervals.length);
@@ -121,6 +121,9 @@ class Bot {
     weekday = weekday.toUpperCase();
     date = date.toLocaleDateString("sl-SI");
     let value = this.constructDailyValue(element.data);
+    if (value === null) {
+      return;
+    }
     msgEmbed.addField(weekday + ", " + date, value, true);
     this.sendMessage(msgEmbed, channelId);
   };
@@ -128,8 +131,16 @@ class Bot {
   // Send data for yesterday
   help = async (channelId) => {
     let msgEmbed = this.constructEmbed("Pomoč", "");
-    msgEmbed.addField("!activate", "Aktivira dnevna obvestila za trenutni kanal", true);
-    msgEmbed.addField("!deactivate", "Ustavi dnevna obvestila za trenutni kanal", true);
+    msgEmbed.addField(
+      "!activate",
+      "Aktivira dnevna obvestila za trenutni kanal",
+      true
+    );
+    msgEmbed.addField(
+      "!deactivate",
+      "Ustavi dnevna obvestila za trenutni kanal",
+      true
+    );
     msgEmbed.addField("!update", "Podatki za prejšnji dan", true);
     msgEmbed.addField("!help", "To sporočilo", true);
     this.sendMessage(msgEmbed, channelId);
@@ -157,8 +168,8 @@ class Bot {
       return;
     }
     let msgEmbed = this.constructEmbed(
-      "Rezultati COVID bolezni preteklih 7 dni",
-      "Število okužb za določene dni"
+      "Rezultati COVID bolezni pretekle dni",
+      "Število okužb preteklih dni. Prikazani so dnevi, ki imajo vnešene podatke, največ 7 dni nazaj"
     );
     await covidData.forEach((day) => {
       let date = new Date(`${day.month}.${day.day}.${day.year}`);
@@ -166,6 +177,9 @@ class Bot {
       weekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
       date = date.toLocaleDateString("sl-SI");
       let value = this.constructDailyValue(day.data);
+      if (value === null) {
+        return;
+      }
       msgEmbed.addField(weekday + ", " + date, value, true);
     });
     this.sendMessage(msgEmbed, channelId);
@@ -186,6 +200,22 @@ class Bot {
 
   // Construct value field for message embed
   constructDailyValue = (element) => {
+    const regularPerformed = element.regular.performed.today;
+    const regularPositive = element.regular.positive.today;
+    const hagtPerformed = element.hagt.performed.today;
+    const hagtPositive = element.hagt.positive.today;
+    if (
+      isNaN(regularPerformed) ||
+      regularPerformed === null ||
+      isNaN(regularPositive) ||
+      regularPositive === null ||
+      isNaN(hagtPerformed) ||
+      hagtPerformed === null ||
+      isNaN(hagtPositive) ||
+      hagtPositive === null
+    ) {
+      return null;
+    }
     return (
       "PCR\n" +
       "Opravljeni: " +
